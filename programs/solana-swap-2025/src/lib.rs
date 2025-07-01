@@ -5,6 +5,8 @@ declare_id!("C3RC2picGe1SRyYNny7bVWCtVc5qizqd7XBMErby2J6V");
 
 #[program]
 pub mod solana_swap_2025 {
+    use std::ops::Mul;
+
     use super::*;
 
     pub fn initialize_market(
@@ -65,6 +67,7 @@ pub mod solana_swap_2025 {
                 authority: ctx.accounts.user.to_account_info(),
             };
             let cpi_program = ctx.accounts.token_program.to_account_info();
+
             transfer(CpiContext::new(cpi_program, cpi_accounts), amount)?;
 
             let cpi_account2 = Transfer{
@@ -72,10 +75,19 @@ pub mod solana_swap_2025 {
                 to: ctx.accounts.user_token_b.to_account_info(),
                 authority: market.to_account_info(),
             };
-           
+            const PRICE_DECIMAL_FACTOR: u128 = 10_u128.pow(6);
 
-            let amount_b: u64 = amount * market.price;
-            let cpi_program2 = ctx.accounts.token_program.to_account_info();
+            let amount_b: u64 = ((amount as u128)
+            .checked_mul(market.price as u128)
+            .ok_or(MySwapError::CalculationOverflow)?
+            .checked_mul(10u128.pow(market.decimals_b as u32))
+            .ok_or(MySwapError::CalculationOverflow)?
+            .checked_div(PRICE_DECIMAL_FACTOR)
+            .ok_or(MySwapError::CalculationOverflow)?
+            .checked_div(10u128.pow(market.decimals_b as u32))
+            .ok_or(MySwapError::CalculationOverflow)?) as u64;
+
+              let cpi_program2 = ctx.accounts.token_program.to_account_info();
             let signer_seeds: &[&[&[u8]]] = &[&[
                 b"market",
                 market.token_mint_a.as_ref(),
@@ -86,6 +98,9 @@ pub mod solana_swap_2025 {
                 cpi_account2, signer_seeds), amount_b)?;
         } else {
             
+
+            // TODO: Implement reverse swap
+
         }
         Ok(())
     }   
@@ -226,4 +241,20 @@ pub struct MarketAccount {
     pub decimals_a: u8,
     pub decimals_b: u8,
     pub bump: u8,
+}
+
+#[error_code]
+pub enum MySwapError {
+    #[msg("You are not authorized to perform this action.")]
+    Unauthorized,
+    #[msg("Exchange rate has not been set.")]
+    PriceNotSet,
+    #[msg("Amount out is too small.")]
+    AmountOutTooSmall,
+    #[msg("Invalid price for reverse swap (price is zero).")]
+    InvalidPriceForReverseSwap,
+    #[msg("The amount must be greater than zero.")]
+    ZeroAmount,
+    #[msg("Arithmetic overflow during calculation.")]
+    CalculationOverflow,
 }

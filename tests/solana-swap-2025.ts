@@ -188,7 +188,9 @@ describe("solana-swap-2025", () => {
   });
 
   it("Should set price", async () => {
-    const price = new anchor.BN(2);
+    const PRICE_DECIMAL_FACTOR = Math.pow(10, 6);
+    const price = new anchor.BN(2.5 * PRICE_DECIMAL_FACTOR);
+
     const tx = await program.methods.setPrice(
       price,
     ).accounts({
@@ -212,8 +214,8 @@ describe("solana-swap-2025", () => {
     const balanceAuthorityTokenBBefore = await connection.getTokenAccountBalance(initializerTokenBAccount.address);
     console.log("Authority Token A balance before:", balanceAuthorityTokenABefore.value.uiAmount);
     console.log("Authority Token B balance before:", balanceAuthorityTokenBBefore.value.uiAmount);
-    const amountA = new anchor.BN(100 * Math.pow(10, DECIMALS_MINT_A));
-    const amountB = new anchor.BN(100 * Math.pow(10, DECIMALS_MINT_B));
+    const amountA = new anchor.BN(1000 * Math.pow(10, DECIMALS_MINT_A));
+    const amountB = new anchor.BN(1000 * Math.pow(10, DECIMALS_MINT_B));
     const tx = await program.methods.addLiquidity(
       amountA,
       amountB,
@@ -251,7 +253,7 @@ describe("solana-swap-2025", () => {
     const balanceUserTokenBBefore = (await connection.getTokenAccountBalance(userTokenBAccount.address)).value.uiAmount * Math.pow(10, DECIMALS_MINT_B);
     console.log("User Token A balance before:", balanceUserTokenABefore);
     console.log("User Token B balance before:", balanceUserTokenABefore );
-    const amount = new anchor.BN(100);
+    const amount = new anchor.BN(100 * Math.pow(10, DECIMALS_MINT_A));
     const tx = await program.methods.swap(
       amount,
       true,
@@ -273,6 +275,6 @@ describe("solana-swap-2025", () => {
    console.log("User Token A balance after:", balanceUserTokenAAfter);
    console.log("User Token B balance after:", balanceUserTokenBAfter);
    expect(balanceUserTokenAAfter).to.equal(balanceUserTokenABefore - amount.toNumber(), "User should have  90 tokens after swapping");
-   expect(balanceUserTokenBAfter).to.equal(balanceUserTokenBBefore + amount.toNumber() * 2, "User should have 110 tokens after swapping");
+   expect(balanceUserTokenBAfter).to.equal(balanceUserTokenBBefore + amount.toNumber() * 2.5, "User should have 110 tokens after swapping");
   })
 });
